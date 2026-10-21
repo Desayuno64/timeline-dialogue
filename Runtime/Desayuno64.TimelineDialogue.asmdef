@@ -1,0 +1,18 @@
+{
+  "name": "Desayuno64.TimelineDialogue",
+  "rootNamespace": "Desayuno64.TimelineDialogue",
+  "references": [
+    "Unity.Timeline",
+    "Unity.TextMeshPro",
+    "UnityEngine.UI"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

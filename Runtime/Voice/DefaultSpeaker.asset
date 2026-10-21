@@ -1,0 +1,27 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f3a8c91e4b2d47e6a0c15d7e9b4f2a18, type: 3}
+  m_Name: DefaultSpeaker
+  m_EditorClassIdentifier: Desayuno64.TimelineDialogue::Desayuno64.TimelineDialogue.SpeakerProfile
+  vowelA:
+  - {fileID: 8300000, guid: ddc1ff9758ef12c468c2f76cf7995c0d, type: 3}
+  - {fileID: 8300000, guid: 6c0b5cf869bd30948a5dd862b5ad72d2, type: 3}
+  vowelE:
+  - {fileID: 8300000, guid: 278951aeae635bd4cb2409dcc8cb0324, type: 3}
+  vowelI:
+  - {fileID: 8300000, guid: e87efb1573db576498568b29d995d091, type: 3}
+  vowelO:
+  - {fileID: 8300000, guid: 43f6cc9a54b027e499a227b9d74558f2, type: 3}
+  vowelU: []
+  volume: 0.75
+  pitchJitterSemitones: 2
+  blipEveryNGlyphs: 1
