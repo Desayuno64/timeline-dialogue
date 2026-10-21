@@ -1,30 +1,34 @@
 using System;
 using TMPro;
 using UnityEngine;
-using UnityEngine.Timeline;
 
 namespace Desayuno64.TimelineDialogue
 {
     public class DialogueController : MonoBehaviour
     {
         const int AllCharactersVisible = 99999;
-        const float WaveAmplitude = 4f;
-        const float WavePeriod = 0.5f;
-        const float WavePhaseStep = 0.35f;
-        const float JitterAmplitude = 1.5f;
-        const float JitterHold = 0.08f;
         const float SeekSeconds = 0.5f;
-        const int PoolSize = 8;
 
         [SerializeField] CanvasGroup dialoguePanel;
         [SerializeField] TMP_Text dialogueText;
         [SerializeField] AudioSource audioSource;
         [SerializeField] SpeakerProfile defaultSpeaker;
 
+        [Header("Motion")]
+        [Tooltip("Height of /w, in text pixels.")]
+        [SerializeField] float waveAmplitude = 4f;
+        [Tooltip("Seconds for one full wave. Higher is slower.")]
+        [SerializeField, Min(0.05f)] float wavePeriod = 1.75f;
+        [Tooltip("Phase shift between neighboring glyphs, in cycles. Lower spreads the wave across more letters.")]
+        [SerializeField] float waveSpacing = 0.12f;
+        [Tooltip("Jitter distance for /j, in text pixels.")]
+        [SerializeField] float jitterAmplitude = 1.5f;
+        [Tooltip("Seconds a jitter offset holds before it picks a new position.")]
+        [SerializeField, Min(0.02f)] float jitterHold = 0.08f;
+
         int activeContentId;
         string activeAuthored = string.Empty;
         DialogueMarkup markup = DialogueMarkup.Parse(string.Empty);
-        char[] wordVowels = Array.Empty<char>();
         float[] appearAt = Array.Empty<float>();
         Vector3[][] cachedBase;
         string cachedRich;
@@ -32,10 +36,8 @@ namespace Desayuno64.TimelineDialogue
         int previousVisible;
         double previousTime = -1d;
         int nonSpaceRevealed;
-        AudioSource[] pool;
-        int poolCursor;
 
-        public void Present(int contentId, DialogueBehaviour behaviour, float curveProgress, double clipTime)
+        public void Present(int contentId, DialogueBehaviour behaviour, float curveProgress, double clipTime, double clipDuration)
         {
             if (dialoguePanel == null || dialogueText == null || behaviour == null)
                 return;
@@ -47,8 +49,6 @@ namespace Desayuno64.TimelineDialogue
                 activeContentId = contentId;
                 activeAuthored = authored;
                 markup = DialogueMarkup.Parse(authored);
-                wordVowels = new char[markup.Plain.Length];
-                SpeakerProfile.MapWordVowels(markup.Plain, wordVowels);
                 appearAt = new float[markup.Plain.Length];
                 for (int i = 0; i < appearAt.Length; i++)
                     appearAt[i] = -1f;
@@ -68,7 +68,9 @@ namespace Desayuno64.TimelineDialogue
             previousVisible = visible;
             previousTime = clipTime;
 
-            ApplyMesh(behaviour, clipTime, visible);
+            ApplyMesh(behaviour, clipTime, clipDuration, visible);
+            dialoguePanel.alpha = PanelAlpha(clipTime, clipDuration, behaviour);
+            RefreshEditorView();
         }
 
         public void Hide()
@@ -93,22 +95,16 @@ namespace Desayuno64.TimelineDialogue
 
             if (dialogueText != null)
                 dialogueText.maxVisibleCharacters = AllCharactersVisible;
+
+            RefreshEditorView();
         }
 
-        public void RegisterPreview(IPropertyCollector driver)
+        static void RefreshEditorView()
         {
-            if (dialoguePanel != null)
-            {
-                driver.AddFromName<CanvasGroup>(dialoguePanel.gameObject, "m_Alpha");
-                driver.AddFromName<CanvasGroup>(dialoguePanel.gameObject, "m_Interactable");
-                driver.AddFromName<CanvasGroup>(dialoguePanel.gameObject, "m_BlocksRaycasts");
-            }
+            if (Application.isPlaying)
+                return;
 
-            if (dialogueText != null)
-            {
-                driver.AddFromName<TMP_Text>(dialogueText.gameObject, "m_text");
-                driver.AddFromName<TMP_Text>(dialogueText.gameObject, "m_maxVisibleCharacters");
-            }
+            DialogueEditorRefresh.Request();
         }
 
         void Awake()
@@ -119,7 +115,6 @@ namespace Desayuno64.TimelineDialogue
         void Show()
         {
             dialoguePanel.gameObject.SetActive(true);
-            dialoguePanel.alpha = 1f;
             dialoguePanel.interactable = true;
             dialoguePanel.blocksRaycasts = true;
             dialogueText.richText = true;
@@ -206,13 +201,13 @@ namespace Desayuno64.TimelineDialogue
                 if (((nonSpaceRevealed - 1) % every) != 0)
                     continue;
 
-                AudioClip clip = speaker.ClipForGlyph(markup.Plain[i], wordVowels[i], i);
+                AudioClip clip = speaker.Voice;
                 if (clip == null)
                     continue;
 
                 if (!Application.isPlaying)
                 {
-                    DialoguePreviewAudio.Play(clip);
+                    DialoguePreviewAudio.Play(clip, PitchRatio(behaviour.pitchOffset));
                     continue;
                 }
 
@@ -222,44 +217,33 @@ namespace Desayuno64.TimelineDialogue
 
         void PlayBlip(AudioClip clip, SpeakerProfile speaker, float pitchOffset)
         {
-            EnsurePool();
-            if (pool == null || pool.Length == 0)
-                return;
-
-            AudioSource source = pool[poolCursor % pool.Length];
-            poolCursor++;
+            AudioSource source = ResolveSource();
             if (source == null)
                 return;
 
             float jitter = speaker.pitchJitterSemitones;
             float semitones = pitchOffset + UnityEngine.Random.Range(-jitter, jitter);
-            source.pitch = Mathf.Pow(2f, semitones / 12f);
+            source.pitch = PitchRatio(semitones);
             source.PlayOneShot(clip, speaker.volume);
         }
 
-        void EnsurePool()
+        static float PitchRatio(float semitones)
         {
-            if (pool != null)
-                return;
+            return Mathf.Pow(2f, semitones / 12f);
+        }
 
-            AudioSource main = audioSource != null ? audioSource : GetComponentInParent<AudioSource>();
-            if (main == null)
-                return;
+        AudioSource ResolveSource()
+        {
+            if (audioSource == null)
+                audioSource = GetComponent<AudioSource>();
+            if (audioSource == null)
+                audioSource = GetComponentInParent<AudioSource>();
+            if (audioSource == null)
+                return null;
 
-            audioSource = main;
-            main.playOnAwake = false;
-            main.spatialBlend = 0f;
-            pool = new AudioSource[PoolSize];
-            pool[0] = main;
-            for (int i = 1; i < PoolSize; i++)
-            {
-                AudioSource extra = main.gameObject.AddComponent<AudioSource>();
-                extra.playOnAwake = false;
-                extra.spatialBlend = 0f;
-                extra.volume = main.volume;
-                extra.outputAudioMixerGroup = main.outputAudioMixerGroup;
-                pool[i] = extra;
-            }
+            audioSource.playOnAwake = false;
+            audioSource.spatialBlend = 0f;
+            return audioSource;
         }
 
         int CountNonSpace(int from, int to)
@@ -274,7 +258,7 @@ namespace Desayuno64.TimelineDialogue
             return count;
         }
 
-        void ApplyMesh(DialogueBehaviour behaviour, double clipTime, int visible)
+        void ApplyMesh(DialogueBehaviour behaviour, double clipTime, double clipDuration, int visible)
         {
             string rich = markup.ToRichText();
             bool rebuilt = rich != cachedRich || visible != cachedVisible;
@@ -288,7 +272,7 @@ namespace Desayuno64.TimelineDialogue
                 cachedVisible = visible;
             }
 
-            if (!rebuilt && !NeedsLiveMotion(behaviour, clipTime, visible))
+            if (!rebuilt && !NeedsLiveMotion(behaviour, clipTime, clipDuration, visible))
                 return;
 
             if (cachedBase == null)
@@ -336,6 +320,7 @@ namespace Desayuno64.TimelineDialogue
                 Vector3 center = (dst[vi] + dst[vi + 2]) * 0.5f;
                 float age = appearAt[i] < 0f ? popDuration : (float)clipTime - appearAt[i];
                 float scale = PopScale(age / popDuration, behaviour.popFromScale, behaviour.popOvershoot);
+                scale *= PopOutScale(clipTime, clipDuration, behaviour);
                 Vector3 offset = GlyphOffset(markup.Flags[i], i, clipTime);
 
                 for (int k = 0; k < 4; k++)
@@ -345,8 +330,10 @@ namespace Desayuno64.TimelineDialogue
             dialogueText.UpdateVertexData(TMP_VertexDataUpdateFlags.Vertices);
         }
 
-        bool NeedsLiveMotion(DialogueBehaviour behaviour, double clipTime, int visible)
+        bool NeedsLiveMotion(DialogueBehaviour behaviour, double clipTime, double clipDuration, int visible)
         {
+            if (PopOutScale(clipTime, clipDuration, behaviour) != 1f)
+                return true;
             float popDuration = Mathf.Max(0.0001f, behaviour.popDuration);
             for (int i = 0; i < visible && i < markup.Plain.Length; i++)
             {
@@ -395,20 +382,55 @@ namespace Desayuno64.TimelineDialogue
             return Mathf.Lerp(overshoot, 1f, settle);
         }
 
-        static Vector3 GlyphOffset(DialogueGlyphFlags flags, int index, double clipTime)
+        static float PopOutScale(double clipTime, double clipDuration, DialogueBehaviour behaviour)
+        {
+            float duration = behaviour.popOutDuration;
+            if (duration <= 0f || clipDuration <= 0.0001d)
+                return 1f;
+
+            float window = Mathf.Min(duration, (float)clipDuration);
+            double start = clipDuration - window;
+            if (clipTime <= start)
+                return 1f;
+
+            float t = Mathf.Clamp01((float)((clipTime - start) / window));
+            float overshoot = Mathf.Max(1f, behaviour.popOvershoot);
+            if (t < 0.3f)
+                return Mathf.Lerp(1f, overshoot, t / 0.3f);
+
+            float u = (t - 0.3f) / 0.7f;
+            return Mathf.Lerp(overshoot, 0f, u * u);
+        }
+
+        static float PanelAlpha(double clipTime, double clipDuration, DialogueBehaviour behaviour)
+        {
+            float fadeOut = Mathf.Clamp01(PopOutScale(clipTime, clipDuration, behaviour));
+            float duration = behaviour.popOutDuration;
+            if (duration <= 0f || clipDuration <= 0.0001d)
+                return fadeOut;
+
+            float window = Mathf.Min(duration, (float)clipDuration * 0.5f);
+            float t = Mathf.Clamp01((float)(clipTime / window));
+            float fadeIn = t * t * (3f - 2f * t);
+            return fadeIn * fadeOut;
+        }
+
+        Vector3 GlyphOffset(DialogueGlyphFlags flags, int index, double clipTime)
         {
             Vector3 offset = Vector3.zero;
             if ((flags & DialogueGlyphFlags.Wave) != 0)
             {
-                float phase = (float)(clipTime / WavePeriod) + index * WavePhaseStep;
-                offset.y += Mathf.Sin(phase * Mathf.PI * 2f) * WaveAmplitude;
+                float period = Mathf.Max(0.05f, wavePeriod);
+                float phase = (float)(clipTime / period) + index * waveSpacing;
+                offset.y += Mathf.Sin(phase * Mathf.PI * 2f) * waveAmplitude;
             }
 
             if ((flags & DialogueGlyphFlags.Jitter) != 0)
             {
-                int bucket = (int)Math.Floor(clipTime / JitterHold);
-                offset.x += HashSigned(index, bucket) * JitterAmplitude;
-                offset.y += HashSigned(index, bucket + 17) * JitterAmplitude;
+                float hold = Mathf.Max(0.02f, jitterHold);
+                int bucket = (int)Math.Floor(clipTime / hold);
+                offset.x += HashSigned(index, bucket) * jitterAmplitude;
+                offset.y += HashSigned(index, bucket + 17) * jitterAmplitude;
             }
 
             return offset;

@@ -40,7 +40,7 @@ namespace Desayuno64.TimelineDialogue
 
             var input = (ScriptPlayable<DialogueBehaviour>)playable.GetInput(activeIndex);
             DialogueBehaviour behaviour = input.GetBehaviour();
-            controller.Present(activeIndex + 1, behaviour, GetRevealProgress(input, behaviour), input.GetTime());
+            controller.Present(activeIndex + 1, behaviour, GetRevealProgress(input, behaviour), input.GetTime(), input.GetDuration());
             visible = true;
         }
 

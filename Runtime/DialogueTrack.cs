@@ -13,12 +13,5 @@ namespace Desayuno64.TimelineDialogue
         {
             return ScriptPlayable<DialogueMixerBehaviour>.Create(graph, inputCount);
         }
-
-        public override void GatherProperties(PlayableDirector director, IPropertyCollector driver)
-        {
-            var controller = director.GetGenericBinding(this) as DialogueController;
-            if (controller != null)
-                controller.RegisterPreview(driver);
-        }
     }
 }

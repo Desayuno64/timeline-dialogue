@@ -17,10 +17,10 @@ namespace Desayuno64.TimelineDialogue.Editor
 
             EditorGUILayout.LabelField("Line", EditorStyles.boldLabel);
             EditorGUILayout.PropertyField(text, GUIContent.none);
-            EditorGUILayout.PropertyField(template.FindPropertyRelative("speaker"));
+            EditorGUILayout.PropertyField(template.FindPropertyRelative("speaker"), new GUIContent("Speaker Profile"));
             EditorGUILayout.PropertyField(template.FindPropertyRelative("instant"));
             EditorGUILayout.PropertyField(template.FindPropertyRelative("mutter"));
-            EditorGUILayout.PropertyField(template.FindPropertyRelative("pitchOffset"));
+            EditorGUILayout.PropertyField(template.FindPropertyRelative("pitchOffset"), new GUIContent("Pitch Offset", "Semitones. 12 is one octave."));
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Reveal", EditorStyles.boldLabel);
@@ -36,6 +36,7 @@ namespace Desayuno64.TimelineDialogue.Editor
             EditorGUILayout.PropertyField(template.FindPropertyRelative("popDuration"));
             EditorGUILayout.PropertyField(template.FindPropertyRelative("popFromScale"));
             EditorGUILayout.PropertyField(template.FindPropertyRelative("popOvershoot"));
+            EditorGUILayout.PropertyField(template.FindPropertyRelative("popOutDuration"), new GUIContent("Pop Out Duration", "Seconds at each end of the strip. The panel fades in, then fades out as the line shrinks."));
 
             EditorGUILayout.Space();
             EditorGUILayout.LabelField("Localization", EditorStyles.boldLabel);
