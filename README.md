@@ -1,6 +1,6 @@
 # Timeline Dialogue
 
-Text strips on a Unity Timeline. Glyphs pop in, `/` codes mark bold, jitter, and wave, and a speaker profile mutters one voice clip as the line reveals.
+Text strips on a Unity Timeline. Glyphs pop in, `/` codes mark bold, color, size, jitter, and wave, and a speaker profile mutters one voice clip as the line reveals.
 
 **Package:** `com.desayuno64.timeline-dialogue`  
 **Unity:** 6000.2 or newer  
@@ -41,10 +41,11 @@ Codes are not drawn and do not take reveal time.
 | `/j` | Jitter. |
 | `/w` | Wave. |
 | `/#rrggbb` | Color, until the closer. `#rgb` and `#rrggbbaa` also work. |
-| `/` | Closes every open code, including color. |
+| `/s120%` | Size, until the closer. `120%` of the font, `+8` or `-4` points, or `36` as an absolute size. |
+| `/` | Closes every open code, including color and size. |
 | `//` | A literal slash. |
 
-`/b` and `/w` stack: `soy /b/w Plumón/, el dodo.` Color stacks the same way: `the /#e23b3b/wqueen of hearts/`.
+`/b` and `/w` stack: `soy /b/w Plumón/, el dodo.` Color and size stack the same way: `the /#e23b3b/s140%/wqueen of hearts/`.
 
 An unclosed code runs to the end of the line. A slash followed by any other letter is shown as text.
 

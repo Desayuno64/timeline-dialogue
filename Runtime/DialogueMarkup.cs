@@ -21,27 +21,31 @@ namespace Desayuno64.TimelineDialogue
         public DialogueGlyphFlags[] Flags { get; }
         public bool[] Colored { get; }
         public Color32[] Colors { get; }
+        public string[] Sizes { get; }
 
-        DialogueMarkup(string plain, DialogueGlyphFlags[] flags, bool[] colored, Color32[] colors)
+        DialogueMarkup(string plain, DialogueGlyphFlags[] flags, bool[] colored, Color32[] colors, string[] sizes)
         {
             Plain = plain;
             Flags = flags;
             Colored = colored;
             Colors = colors;
+            Sizes = sizes;
         }
 
         public static DialogueMarkup Parse(string authored)
         {
             if (string.IsNullOrEmpty(authored))
-                return new DialogueMarkup(string.Empty, Array.Empty<DialogueGlyphFlags>(), Array.Empty<bool>(), Array.Empty<Color32>());
+                return new DialogueMarkup(string.Empty, Array.Empty<DialogueGlyphFlags>(), Array.Empty<bool>(), Array.Empty<Color32>(), Array.Empty<string>());
 
             var plain = new StringBuilder(authored.Length);
             var flags = new List<DialogueGlyphFlags>(authored.Length);
             var colored = new List<bool>(authored.Length);
             var colors = new List<Color32>(authored.Length);
+            var sizes = new List<string>(authored.Length);
             DialogueGlyphFlags current = DialogueGlyphFlags.None;
             bool hasColor = false;
             Color32 currentColor = default;
+            string currentSize = null;
 
             for (int i = 0; i < authored.Length; i++)
             {
@@ -52,6 +56,7 @@ namespace Desayuno64.TimelineDialogue
                     flags.Add(current);
                     colored.Add(hasColor);
                     colors.Add(currentColor);
+                    sizes.Add(currentSize);
                     continue;
                 }
 
@@ -61,6 +66,7 @@ namespace Desayuno64.TimelineDialogue
                     flags.Add(current);
                     colored.Add(hasColor);
                     colors.Add(currentColor);
+                    sizes.Add(currentSize);
                     i++;
                     continue;
                 }
@@ -71,6 +77,13 @@ namespace Desayuno64.TimelineDialogue
                     hasColor = true;
                     currentColor = color;
                     i = end - 1;
+                    continue;
+                }
+
+                if (j < authored.Length && authored[j] == 's' && TryReadSize(authored, j + 1, out string size, out int sizeEnd))
+                {
+                    currentSize = size;
+                    i = sizeEnd - 1;
                     continue;
                 }
 
@@ -96,6 +109,7 @@ namespace Desayuno64.TimelineDialogue
                 {
                     current = DialogueGlyphFlags.None;
                     hasColor = false;
+                    currentSize = null;
                     continue;
                 }
 
@@ -103,9 +117,10 @@ namespace Desayuno64.TimelineDialogue
                 flags.Add(current);
                 colored.Add(hasColor);
                 colors.Add(currentColor);
+                sizes.Add(currentSize);
             }
 
-            return new DialogueMarkup(plain.ToString(), flags.ToArray(), colored.ToArray(), colors.ToArray());
+            return new DialogueMarkup(plain.ToString(), flags.ToArray(), colored.ToArray(), colors.ToArray(), sizes.ToArray());
         }
 
         public static string Strip(string authored)
@@ -121,24 +136,45 @@ namespace Desayuno64.TimelineDialogue
             var rich = new StringBuilder(Plain.Length + 16);
             bool bold = false;
             bool colored = false;
+            bool sized = false;
             Color32 color = default;
+            string size = null;
             for (int i = 0; i < Plain.Length; i++)
             {
                 bool wantBold = (Flags[i] & DialogueGlyphFlags.Bold) != 0;
                 bool wantColor = Colored[i];
                 Color32 want = Colors[i];
-                if (bold != wantBold || colored != wantColor || (wantColor && !color.Equals(want)))
+                bool wantSize = Sizes[i] != null;
+                string wantSizeValue = Sizes[i];
+                bool sizeDiffers = sized != wantSize || (wantSize && size != wantSizeValue);
+                if (sizeDiffers || bold != wantBold || colored != wantColor || (wantColor && !color.Equals(want)))
                 {
-                    if (colored)
+                    if (colored && (sizeDiffers || bold != wantBold || !wantColor || !color.Equals(want)))
                     {
                         rich.Append("</color>");
                         colored = false;
                     }
 
-                    if (bold && !wantBold)
+                    if (bold && (sizeDiffers || !wantBold))
                     {
                         rich.Append("</b>");
                         bold = false;
+                    }
+
+                    if (sizeDiffers && sized)
+                    {
+                        rich.Append("</size>");
+                        sized = false;
+                        size = null;
+                    }
+
+                    if (wantSize && !sized)
+                    {
+                        rich.Append("<size=");
+                        rich.Append(wantSizeValue);
+                        rich.Append('>');
+                        sized = true;
+                        size = wantSizeValue;
                     }
 
                     if (wantBold && !bold)
@@ -147,7 +183,7 @@ namespace Desayuno64.TimelineDialogue
                         bold = true;
                     }
 
-                    if (wantColor)
+                    if (wantColor && !colored)
                     {
                         rich.Append("<color=#");
                         AppendHex(rich, want);
@@ -164,8 +200,53 @@ namespace Desayuno64.TimelineDialogue
                 rich.Append("</color>");
             if (bold)
                 rich.Append("</b>");
+            if (sized)
+                rich.Append("</size>");
 
             return rich.ToString();
+        }
+
+        static bool TryReadSize(string authored, int start, out string size, out int end)
+        {
+            int i = start;
+            if (i < authored.Length && (authored[i] == '+' || authored[i] == '-'))
+                i++;
+
+            bool dot = false;
+            bool sawDigit = false;
+            while (i < authored.Length)
+            {
+                char c = authored[i];
+                if (c >= '0' && c <= '9')
+                {
+                    sawDigit = true;
+                    i++;
+                    continue;
+                }
+
+                if (c == '.' && !dot)
+                {
+                    dot = true;
+                    i++;
+                    continue;
+                }
+
+                break;
+            }
+
+            if (!sawDigit || authored[i - 1] == '.')
+            {
+                size = null;
+                end = start;
+                return false;
+            }
+
+            if (i < authored.Length && authored[i] == '%')
+                i++;
+
+            size = authored.Substring(start, i - start);
+            end = i;
+            return true;
         }
 
         static bool TryReadColor(string authored, int start, out Color32 color, out int end)
