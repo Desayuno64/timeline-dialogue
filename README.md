@@ -3,8 +3,8 @@
 Text strips on a Unity Timeline. Glyphs pop in, `/` codes mark bold, color, size, jitter, and wave, and a speaker profile mutters one voice clip as the line reveals.
 
 **Package:** `com.desayuno64.timeline-dialogue`  
-**Unity:** 6000.2 or newer  
-**Dependencies:** Timeline, uGUI (TextMeshPro)
+**Unity:** 2021.3 or newer  
+**Dependencies:** Timeline 1.6.4 or newer, uGUI. Unity 2021.3 and 2022.3 also need the TextMeshPro package. Unity 2023.2 and newer include it in uGUI.
 
 ## Install
 

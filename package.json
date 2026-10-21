@@ -3,13 +3,13 @@
   "version": "0.1.0",
   "displayName": "Timeline Dialogue",
   "description": "Timeline text strips with glyph pop, slash codes, wave, jitter, and speaker mutter.",
-  "unity": "6000.2",
+  "unity": "2021.3",
   "author": {
     "name": "Desayuno64"
   },
   "dependencies": {
-    "com.unity.timeline": "1.8.9",
-    "com.unity.ugui": "2.0.0"
+    "com.unity.timeline": "1.6.4",
+    "com.unity.ugui": "1.0.0"
   },
   "samples": [
     {

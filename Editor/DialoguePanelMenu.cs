@@ -39,7 +39,11 @@ namespace Desayuno64.TimelineDialogue.Editor
             tmp.text = "Hello /w there/.";
             tmp.fontSize = 36f;
             tmp.alignment = TextAlignmentOptions.MidlineLeft;
+#if UNITY_2023_2_OR_NEWER
+            tmp.textWrappingMode = TextWrappingModes.Normal;
+#else
             tmp.enableWordWrapping = true;
+#endif
             tmp.color = Color.white;
 
             var audio = canvasGo.AddComponent<AudioSource>();
