@@ -4,6 +4,7 @@ Text strips on a Unity Timeline. Glyphs pop in, `/` codes mark bold, color, size
 
 **Package:** `com.desayuno64.timeline-dialogue`  
 **Unity:** 2021.3 or newer  
+**License:** MIT  
 **Dependencies:** Timeline 1.6.4 or newer, uGUI. Unity 2021.3 and 2022.3 also need the TextMeshPro package. Unity 2023.2 and newer include it in uGUI.
 
 ## Install
